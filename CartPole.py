@@ -1,5 +1,4 @@
 import gym
-import time
 
 from Brain import Neuron
 
@@ -11,28 +10,24 @@ input_count = len(env.observation_space.low)
 action_count = env.action_space.n
 neuron_count = input_count * 2 * action_count
 
-episodes = 160
-time_steps = 1000
+EPISODES = 5000
+TIME_STEPS = 1000
 
 neurons = []
 for i in range(neuron_count):
 	neurons.append(Neuron())
 
+STEPS_TO_FAIL = 25  # 20-30
+
 last_100_rewards = []
-for e in range(episodes):
+for e in range(EPISODES):
 	print()
 	print('STARTING EPISODE', e)
 	observation = env.reset()
 	total_reward = 0
+	prev_fired = []
 
-	x = observation[0]
-	x_dot = observation[1]
-	angle = observation[2]
-	angle_dot = observation[3]
-	for t in range(time_steps):
-		# time.sleep(1)
-		# env.render()
-
+	for t in range(TIME_STEPS):
 		# print()
 		# print('Thresholds to meet:')
 		# print([n.fire_threshold for n in neurons])
@@ -40,6 +35,7 @@ for e in range(episodes):
 		# action = env.action_space.sample()
 		fired = []
 		action = None
+		loop_count = 0
 		while action is None:
 			# Add charges based on input values
 			for i in range(len(observation)):
@@ -61,44 +57,48 @@ for e in range(episodes):
 				neuron = neurons[f]
 				if fire_count > 0:
 					fired.append(neuron)
+					# for i in range(int(fire_count)):
+					# neuron.encourage()  # If a neuron fired, encourage that behavior
 
 			# Determine action from neuron fires
-			left = sum(fires[::2])
-			right = sum(fires[1::2])
+			left = sum(fires[::2])  # The even-indexed neurons
+			right = sum(fires[1::2])  # The odd-indexed neurons
 			if left >= right and left > 0:
 				action = 0
 			elif right >= left and right > 0:
 				action = 1
+
+			loop_count += 1
 
 		# print('action is', action)
 
 		observation, reward, done, info = env.step(action)
 		total_reward += reward
 
-		new_x = observation[0]
-		new_x_dot = observation[1]
-		new_angle = observation[2]
-		new_angle_dot = observation[3]
-		# positive_result = abs(new_x) < abs(x) and abs(new_angle) < abs(angle) and abs(new_angle_dot) < abs(angle_dot) and abs(new_x_dot) < abs(x_dot)
-		positive_result = abs(new_angle) < abs(angle) and abs(new_x_dot) < abs(x_dot)
-		# positive_result = abs(new_angle) < abs(angle) and abs(new_x) < abs(x) and abs(new_x_dot) < abs(x_dot)
-		x = new_x
-		x_dot = new_x_dot
-		angle = new_angle
-		angle_dot = new_angle_dot
-
-		# print('Positive Result:', positive_result)
-		for neuron in fired:
-			if positive_result:
+		# Update the neurons
+		prev_fired.append(fired)
+		if len(prev_fired) > STEPS_TO_FAIL:  # TIME_STEP_MEMORY:
+			removed_fired = prev_fired.pop(0)
+			for neuron in removed_fired:
 				neuron.encourage()
-			else:
-				neuron.discourage()
+				# neuron.encourage()
 
+		# Always decay the neurons at each step
 		for neuron in neurons:
 			neuron.decay()
 
+		# This tells us if the simulation has ended
 		if done:
 			# print('Episode finished after {0} timesteps'.format(t + 1))
+			bad_fires = prev_fired[-STEPS_TO_FAIL:]
+			# if len(prev_fired) > 50: print('Length of bad fires:', len(bad_fires))
+			for fired in bad_fires:
+				for neuron in fired:
+					neuron.discourage()
+
+			# if e >= 100:
+			# 	TIME_STEP_MEMORY = max(sum(last_100_rewards) // len(last_100_rewards), TIME_STEP_MEMORY)
+
 			break
 
 	print('Total Reward for this episode:', total_reward)
@@ -106,3 +106,7 @@ for e in range(episodes):
 	if len(last_100_rewards) > 100:
 		last_100_rewards.pop(0)
 	print('Average past 100 rewards:', sum(last_100_rewards) // len(last_100_rewards))
+	print('Total Neuron Threshold:', int(sum([neuron.fire_threshold for neuron in neurons])))
+	print('Hightest Threshold:', max([n.fire_threshold for n in neurons]))
+	print('Neurons at 30:', len(list(filter(lambda n: n.fire_threshold == 30, neurons))))
+	print('Neurons below 1:', len(list(filter(lambda n: n.fire_threshold < 1, neurons))))

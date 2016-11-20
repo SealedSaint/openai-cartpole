@@ -2,23 +2,24 @@ import gym
 
 from Brain import Neuron
 
-env = gym.make('CartPole-v0')
+env = gym.make('MountainCar-v0')
 # env.monitor.start('/monitor/cartpole')
-# print(env.action_space.n)
-# print(len(env.observation_space.low))
+print(env.action_space)
+print(env.observation_space.low)
 
 input_count = len(env.observation_space.low)
 action_count = env.action_space.n
 neuron_count = input_count * 2 * action_count
+print("neuron count:", neuron_count)
 
 EPISODES = 500
-TIME_STEPS = 1000
+TIME_STEPS = 300
 
 neurons = []
 for i in range(neuron_count):
 	neurons.append(Neuron())
 
-STEPS_TO_FAIL = 25  # 20-30
+STEPS_TO_FAIL = 100
 
 last_100_rewards = []
 for e in range(EPISODES):
@@ -29,6 +30,7 @@ for e in range(EPISODES):
 	prev_fired = []
 
 	for t in range(TIME_STEPS):
+		env.render()
 		# print()
 		# print('Thresholds to meet:')
 		# print([n.fire_threshold for n in neurons])
@@ -36,15 +38,18 @@ for e in range(EPISODES):
 		# action = env.action_space.sample()
 		fired = []
 		action = None
-		loop_count = 0
 		while action is None:
 			# Add charges based on input values
-			for i in range(len(observation)):
-				input = observation[i]
-				input_neg = 0 if input > 0 else abs(input)
-				input_pos = 0 if input < 0 else abs(input)
-				neurons[2*i].add_charge(input_neg)
-				neurons[2*i+1].add_charge(input_pos)
+			for i in range(input_count):
+				obs = observation[i]
+				input_neg = abs(obs) if obs < 0 else 0
+				input_pos = abs(obs) if obs > 0 else 0
+
+				# The first 3 neurons need to get charged by the negative input (3 because there are 3 actions to choose from)
+				for neuron in neurons[action_count*i*2:action_count*i*2+action_count]:
+					neuron.add_charge(input_neg)
+				for neuron in neurons[action_count*((i*2)+1):action_count*((i*2)+1)+action_count]:
+					neuron.add_charge(input_pos)
 
 			# print('New Charges:')
 			# print([n.charge for n in neurons])
@@ -62,26 +67,32 @@ for e in range(EPISODES):
 					# neuron.encourage()  # If a neuron fired, encourage that behavior
 
 			# Determine action from neuron fires
-			left = sum(fires[::2])  # The even-indexed neurons
-			right = sum(fires[1::2])  # The odd-indexed neurons
-			if left >= right and left > 0:
-				action = 0
-			elif right >= left and right > 0:
-				action = 1
+			best_action = 0
+			largest_sum = 0
+			for i in range(action_count):
+				s = sum(fires[i::action_count])
+				if s > largest_sum:
+					largest_sum = s
+					best_action = i
 
-			loop_count += 1
+			action = best_action
 
-		# print('action is', action)
+			# action = 0 if observation[1] <= 0 else 2  # solution, but not learning
+
+			# action = env.action_space.sample()
+
+		print('action is', action)
 
 		observation, reward, done, info = env.step(action)
+		print('observation is:', observation)
 		total_reward += reward
 
 		# Update the neurons
 		prev_fired.append(fired)
 		if len(prev_fired) > STEPS_TO_FAIL:  # TIME_STEP_MEMORY:
 			removed_fired = prev_fired.pop(0)
-			for neuron in removed_fired:
-				neuron.encourage()
+			# for neuron in removed_fired:
+			# 	neuron.encourage()
 				# neuron.encourage()
 
 		# Always decay the neurons at each step
@@ -107,9 +118,9 @@ for e in range(EPISODES):
 	if len(last_100_rewards) > 100:
 		last_100_rewards.pop(0)
 	print('Average past 100 rewards:', sum(last_100_rewards) // len(last_100_rewards))
-	print('Total Neuron Threshold:', int(sum([neuron.fire_threshold for neuron in neurons])))
-	print('Hightest Threshold:', max([n.fire_threshold for n in neurons]))
-	print('Neurons at 30:', len(list(filter(lambda n: n.fire_threshold == 30, neurons))))
-	print('Neurons below 1:', len(list(filter(lambda n: n.fire_threshold < 1, neurons))))
+	# print('Total Neuron Threshold:', int(sum([neuron.fire_threshold for neuron in neurons])))
+	# print('Hightest Threshold:', max([n.fire_threshold for n in neurons]))
+	# print('Neurons at 30:', len(list(filter(lambda n: n.fire_threshold == 30, neurons))))
+	# print('Neurons below 1:', len(list(filter(lambda n: n.fire_threshold < 1, neurons))))
 
 # env.monitor.close()

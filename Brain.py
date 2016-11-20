@@ -5,7 +5,7 @@ class Neuron:
 
 	START_THRESHOLD = 1
 	THRESHOLD_CAP = 30
-	DECAY_RATE = 3  # 1/X each decay  # Speed vs quality of learning
+	DECAY_RATE = 10  # 1/X each decay  # Speed vs quality of learning
 	ENCOURAGE_RATE = 10
 	DISCOURAGE_RATE = 10
 

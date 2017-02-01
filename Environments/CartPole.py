@@ -43,8 +43,8 @@ for e in range(EPISODES):
 				input = observation[i]
 				input_neg = 0 if input > 0 else abs(input)
 				input_pos = 0 if input < 0 else abs(input)
-				neurons[2*i].add_charge(input_neg)
-				neurons[2*i+1].add_charge(input_pos)
+				neurons[2 * i].add_charge(input_neg)
+				neurons[2 * i + 1].add_charge(input_pos)
 
 			# print('New Charges:')
 			# print([n.charge for n in neurons])

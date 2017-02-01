@@ -1,20 +1,10 @@
-class Test:
-	def __init__(self, source, destination):
-		self.source = source
-		self.destination = destination
-		self.val = 0
+import numpy as np
 
-	def charge(self):
-		self.val += self.source
-
-	def send(self):
-		self.destination = self.charge
-
-
-s = 1
-d = 0
-test = Test(s, d)
-test.charge()
-print(test.val)
-test.send()
+arr = [
+   [[1, 1, 1],[2, 2, 2],[3, 3, 3]], [[4, 4, 4],[5, 5, 5],[6, 6, 6]]
+]
+a = np.array(arr)
+print(a)
+# print([[sum(rgbArr) for rgbArr in col] for col in arr])
+d = np.dot(a[:3], [.3, .6, .1])
 print(d)
